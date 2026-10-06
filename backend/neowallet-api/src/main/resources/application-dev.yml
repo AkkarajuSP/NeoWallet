@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: ${NEOWALLET_DB_URL:jdbc:postgresql://localhost:5432/neowallet_dev}
+    username: ${NEOWALLET_DB_USER:neowallet}
+    password: ${NEOWALLET_DB_PASSWORD:neowallet}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${NEOWALLET_REDIS_HOST:localhost}
+      port: ${NEOWALLET_REDIS_PORT:6379}
+      password: ${NEOWALLET_REDIS_PASSWORD:}
+      database: ${NEOWALLET_REDIS_DB:0}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+neowallet:
+  auth:
+    jwt-secret: ${NEOWALLET_JWT_SECRET:ZGV2LXNlY3JldC1rZXktdGhhdC1pcy1sb25nLWVub3VnaC1mb3ItaHMyNTY=}
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+  otp:
+    provider: ${NEOWALLET_OTP_PROVIDER:stub}
+
+logging:
+  level:
+    com.neowallet: DEBUG
+    org.springframework.security: DEBUG

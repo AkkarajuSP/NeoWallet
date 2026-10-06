@@ -1,0 +1,5613 @@
+openapi: 3.1.0
+info:
+  title: NeoWallet API
+  version: 1.0.0
+  description: NeoWallet MVP API Contract Specification
+  contact:
+    name: NeoWallet API Team
+    email: api@neowallet.com
+  license:
+    name: Proprietary
+    identifier: Proprietary
+
+servers:
+  - url: https://api.neowallet.com/api/v1
+    description: Production
+  - url: https://api-staging.neowallet.com/api/v1
+    description: Staging
+  - url: https://api-dev.neowallet.com/api/v1
+    description: Development
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - timestamp
+      properties:
+        code:
+          type: string
+          example: BUDGET_NOT_FOUND
+        message:
+          type: string
+          example: Budget was not found.
+        requestId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        totalCount:
+          type: integer
+        pageCount:
+          type: integer
+
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+        password:
+          type: string
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+        locale:
+          type: string
+          default: en-US
+
+    RegisterResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phoneNumber:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        requiresVerification:
+          type: boolean
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        deviceId:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          default: Bearer
+        expiresIn:
+          type: integer
+        user:
+          type: object
+          properties:
+            userId:
+              type: string
+              format: uuid
+            email:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+            familyId:
+              type: string
+              format: uuid
+              nullable: true
+
+    OtpRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+        purpose:
+          type: string
+          enum: [REGISTRATION, LOGIN, RESET]
+
+    OtpRequestResponse:
+      type: object
+      properties:
+        otpId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+        resendAfter:
+          type: integer
+
+    OtpVerifyRequest:
+      type: object
+      required:
+        - otpId
+        - code
+      properties:
+        otpId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: ^\d{6}$
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+
+    OtpVerifyResponse:
+      type: object
+      properties:
+        verified:
+          type: boolean
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          default: Bearer
+        expiresIn:
+          type: integer
+
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+        deviceName:
+          type: string
+        lastActiveAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+
+    # User Schemas
+    User:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phoneNumber:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        familyRole:
+          type: string
+          enum: [OWNER, MEMBER, RESTRICTED]
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phoneNumber:
+          type: string
+
+    DeleteUserRequest:
+      type: object
+      required:
+        - confirmation
+      properties:
+        confirmation:
+          type: string
+
+    UserPreferences:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        locale:
+          type: string
+        currency:
+          type: string
+        timezone:
+          type: string
+        notificationPreferences:
+          type: object
+          properties:
+            budgetAlerts:
+              type: boolean
+            billReminders:
+              type: boolean
+            savingsUpdates:
+              type: boolean
+            financialHealthUpdates:
+              type: boolean
+        aiPreferences:
+          type: object
+          properties:
+            responseStyle:
+              type: string
+              enum: [CONCISE, DETAILED]
+            language:
+              type: string
+
+    UpdateUserPreferencesRequest:
+      type: object
+      properties:
+        locale:
+          type: string
+        currency:
+          type: string
+        timezone:
+          type: string
+        notificationPreferences:
+          type: object
+          properties:
+            budgetAlerts:
+              type: boolean
+            billReminders:
+              type: boolean
+            savingsUpdates:
+              type: boolean
+            financialHealthUpdates:
+              type: boolean
+        aiPreferences:
+          type: object
+          properties:
+            responseStyle:
+              type: string
+              enum: [CONCISE, DETAILED]
+            language:
+              type: string
+
+    Device:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        deviceName:
+          type: string
+        deviceType:
+          type: string
+          enum: [ANDROID, IOS, WEB]
+        lastActiveAt:
+          type: string
+          format: date-time
+        registeredAt:
+          type: string
+          format: date-time
+
+    # Family Schemas
+    Family:
+      type: object
+      properties:
+        familyId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 100
+        currency:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateFamilyRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        currency:
+          type: string
+
+    UpdateFamilyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        currency:
+          type: string
+
+    DeleteFamilyRequest:
+      type: object
+      required:
+        - confirmation
+      properties:
+        confirmation:
+          type: string
+
+    FamilyInvitationRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [MEMBER, RESTRICTED]
+          default: MEMBER
+
+    FamilyInvitation:
+      type: object
+      properties:
+        invitationId:
+          type: string
+          format: uuid
+        token:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [MEMBER, RESTRICTED]
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    FamilyMember:
+      type: object
+      properties:
+        memberId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, MEMBER, RESTRICTED]
+        joinedAt:
+          type: string
+          format: date-time
+
+    UpdateFamilyMemberRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum: [MEMBER, RESTRICTED]
+
+    AcceptInvitationResponse:
+      type: object
+      properties:
+        familyId:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [MEMBER, RESTRICTED]
+        joinedAt:
+          type: string
+          format: date-time
+
+    # Financial Overview Schemas
+    FinancialOverview:
+      type: object
+      properties:
+        overviewId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        planningIncome:
+          type: number
+          format: decimal
+        mandatoryCommitments:
+          type: number
+          format: decimal
+        essentialAllocation:
+          type: number
+          format: decimal
+        savingsAllocation:
+          type: number
+          format: decimal
+        emergencyAllocation:
+          type: number
+          format: decimal
+        discretionaryPlanning:
+          type: number
+          format: decimal
+        committedAmount:
+          type: number
+          format: decimal
+        pendingPayments:
+          type: number
+          format: decimal
+        actualTransactions:
+          type: number
+          format: decimal
+        availableFinancialCapacity:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        calculatedAt:
+          type: string
+          format: date-time
+        disclaimer:
+          type: string
+
+    FinancialSummary:
+      type: object
+      properties:
+        totalIncome:
+          type: number
+          format: decimal
+        totalExpenses:
+          type: number
+          format: decimal
+        totalSavings:
+          type: number
+          format: decimal
+        availableCapacity:
+          type: number
+          format: decimal
+        budgetAdherence:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+
+    Allocation:
+      type: object
+      properties:
+        category:
+          type: string
+        allocatedAmount:
+          type: number
+          format: decimal
+        actualAmount:
+          type: number
+          format: decimal
+        utilizationPercentage:
+          type: number
+          format: decimal
+        currency:
+          type: string
+
+    Commitment:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [BILL, LOAN, SUBSCRIPTION]
+        name:
+          type: string
+        amount:
+          type: number
+          format: decimal
+        dueDate:
+          type: string
+          format: date
+        currency:
+          type: string
+
+    PendingPayment:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [BILL, TRANSFER]
+        amount:
+          type: number
+          format: decimal
+        dueDate:
+          type: string
+          format: date
+        currency:
+          type: string
+
+    # Transaction Schemas
+    Transaction:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [INCOME, EXPENSE, REFUND, ADJUSTMENT, TRANSFER_RECORD]
+        category:
+          type: string
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        currency:
+          type: string
+        description:
+          type: string
+        transactionDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PLANNED, COMMITTED, PENDING, COMPLETED, FAILED, REVERSED]
+        isRecurring:
+          type: boolean
+        familyMemberId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateTransactionRequest:
+      type: object
+      required:
+        - type
+        - category
+        - amount
+      properties:
+        type:
+          type: string
+          enum: [INCOME, EXPENSE, REFUND, ADJUSTMENT, TRANSFER_RECORD]
+        category:
+          type: string
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        currency:
+          type: string
+        description:
+          type: string
+        transactionDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PLANNED, COMMITTED, PENDING, COMPLETED]
+          default: PLANNED
+        isRecurring:
+          type: boolean
+          default: false
+        familyMemberId:
+          type: string
+          format: uuid
+
+    UpdateTransactionRequest:
+      type: object
+      properties:
+        category:
+          type: string
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        description:
+          type: string
+        transactionDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PLANNED, COMMITTED, PENDING, COMPLETED, FAILED, REVERSED]
+        isRecurring:
+          type: boolean
+
+    TransactionsResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Budget Schemas
+    BudgetCategory:
+      type: object
+      properties:
+        category:
+          type: string
+        limit:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        spent:
+          type: number
+          format: decimal
+        utilizationPercentage:
+          type: number
+          format: decimal
+        priority:
+          type: string
+          enum: [ESSENTIAL, VARIABLE, DISCRETIONARY]
+
+    Budget:
+      type: object
+      properties:
+        budgetId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 100
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        currency:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetCategory'
+        totalLimit:
+          type: number
+          format: decimal
+        totalSpent:
+          type: number
+          format: decimal
+        utilizationPercentage:
+          type: number
+          format: decimal
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateBudgetRequest:
+      type: object
+      required:
+        - name
+        - period
+        - categories
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        currency:
+          type: string
+        categories:
+          type: array
+          items:
+            type: object
+            required:
+              - category
+              - limit
+            properties:
+              category:
+                type: string
+              limit:
+                type: number
+                format: decimal
+                exclusiveMinimum: 0
+              priority:
+                type: string
+                enum: [ESSENTIAL, VARIABLE, DISCRETIONARY]
+                default: VARIABLE
+
+    UpdateBudgetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        categories:
+          type: array
+          items:
+            type: object
+            required:
+              - category
+              - limit
+            properties:
+              category:
+                type: string
+              limit:
+                type: number
+                format: decimal
+                exclusiveMinimum: 0
+              priority:
+                type: string
+                enum: [ESSENTIAL, VARIABLE, DISCRETIONARY]
+
+    BudgetUtilization:
+      type: object
+      properties:
+        budgetId:
+          type: string
+          format: uuid
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        currency:
+          type: string
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              limit:
+                type: number
+                format: decimal
+              spent:
+                type: number
+                format: decimal
+              remaining:
+                type: number
+                format: decimal
+              utilizationPercentage:
+                type: number
+                format: decimal
+              status:
+                type: string
+                enum: [WITHIN_BUDGET, NEAR_LIMIT, OVER_BUDGET]
+        totalLimit:
+          type: number
+          format: decimal
+        totalSpent:
+          type: number
+          format: decimal
+        totalRemaining:
+          type: number
+          format: decimal
+        overallUtilizationPercentage:
+          type: number
+          format: decimal
+        overallStatus:
+          type: string
+          enum: [WITHIN_BUDGET, NEAR_LIMIT, OVER_BUDGET]
+        calculatedAt:
+          type: string
+          format: date-time
+
+    BudgetForecast:
+      type: object
+      properties:
+        budgetId:
+          type: string
+          format: uuid
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        currency:
+          type: string
+        forecast:
+          type: object
+          properties:
+            projectedSpending:
+              type: number
+              format: decimal
+            projectedRemaining:
+              type: number
+              format: decimal
+            projectedUtilizationPercentage:
+              type: number
+              format: decimal
+            projectedStatus:
+              type: string
+              enum: [WITHIN_BUDGET, NEAR_LIMIT, OVER_BUDGET]
+            confidence:
+              type: string
+              enum: [HIGH, MEDIUM, LOW]
+            basedOnHistoricalMonths:
+              type: integer
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              limit:
+                type: number
+                format: decimal
+              projectedSpending:
+                type: number
+                format: decimal
+              projectedRemaining:
+                type: number
+                format: decimal
+              projectedUtilizationPercentage:
+                type: number
+                format: decimal
+        calculatedAt:
+          type: string
+          format: date-time
+
+    BudgetRecommendation:
+      type: object
+      properties:
+        recommendationId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        currency:
+          type: string
+        recommendedAllocation:
+          type: object
+          properties:
+            planningIncome:
+              type: number
+              format: decimal
+            essentialAllocation:
+              type: number
+              format: decimal
+            variableAllocation:
+              type: number
+              format: decimal
+            savingsAllocation:
+              type: number
+              format: decimal
+            emergencyAllocation:
+              type: number
+              format: decimal
+            discretionaryPlanning:
+              type: number
+              format: decimal
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              recommendedLimit:
+                type: number
+                format: decimal
+              basedOnHistoricalAverage:
+                type: number
+                format: decimal
+              priority:
+                type: string
+        confidence:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        historicalMonthsUsed:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+        disclaimer:
+          type: string
+
+    # Allocation Schemas
+    AllocationRecommendation:
+      type: object
+      properties:
+        recommendationId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        period:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        currency:
+          type: string
+        systemRecommendation:
+          type: object
+          properties:
+            planningIncome:
+              type: number
+              format: decimal
+            essentialAllocation:
+              type: number
+              format: decimal
+            variableAllocation:
+              type: number
+              format: decimal
+            savingsAllocation:
+              type: number
+              format: decimal
+            emergencyAllocation:
+              type: number
+              format: decimal
+            discretionaryPlanning:
+              type: number
+              format: decimal
+        userModification:
+          type: object
+          nullable: true
+        finalApprovedAllocation:
+          type: object
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING_APPROVAL, APPROVED, REJECTED]
+        generatedAt:
+          type: string
+          format: date-time
+
+    ApproveAllocationResponse:
+      type: object
+      properties:
+        recommendationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [APPROVED]
+        finalApprovedAllocation:
+          type: object
+        approvedAt:
+          type: string
+          format: date-time
+
+    ModifyAllocationRequest:
+      type: object
+      properties:
+        modifications:
+          type: object
+          properties:
+            essentialAllocation:
+              type: number
+              format: decimal
+            variableAllocation:
+              type: number
+              format: decimal
+            savingsAllocation:
+              type: number
+              format: decimal
+            emergencyAllocation:
+              type: number
+              format: decimal
+            discretionaryPlanning:
+              type: number
+              format: decimal
+
+    # Savings Schemas
+    SavingsGoal:
+      type: object
+      properties:
+        goalId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 100
+        targetAmount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        targetDate:
+          type: string
+          format: date
+        currentAmount:
+          type: number
+          format: decimal
+          minimum: 0
+        currency:
+          type: string
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        category:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, CANCELLED]
+        progressPercentage:
+          type: number
+          format: decimal
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateSavingsGoalRequest:
+      type: object
+      required:
+        - name
+        - targetAmount
+        - targetDate
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        targetAmount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        targetDate:
+          type: string
+          format: date
+        currentAmount:
+          type: number
+          format: decimal
+          minimum: 0
+          default: 0
+        currency:
+          type: string
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          default: MEDIUM
+        category:
+          type: string
+
+    UpdateSavingsGoalRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        targetAmount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        targetDate:
+          type: string
+          format: date
+        currentAmount:
+          type: number
+          format: decimal
+          minimum: 0
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        category:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, COMPLETED, CANCELLED]
+
+    SavingsGoalProgress:
+      type: object
+      properties:
+        goalId:
+          type: string
+          format: uuid
+        currentAmount:
+          type: number
+          format: decimal
+        targetAmount:
+          type: number
+          format: decimal
+        progressPercentage:
+          type: number
+          format: decimal
+        remainingAmount:
+          type: number
+          format: decimal
+        monthsRemaining:
+          type: integer
+        requiredMonthlyContribution:
+          type: number
+          format: decimal
+        actualMonthlyContribution:
+          type: number
+          format: decimal
+        onTrack:
+          type: boolean
+        status:
+          type: string
+          enum: [ON_TRACK, BEHIND, AHEAD]
+        calculatedAt:
+          type: string
+          format: date-time
+
+    SavingsGoalForecast:
+      type: object
+      properties:
+        goalId:
+          type: string
+          format: uuid
+        forecast:
+          type: object
+          properties:
+            projectedCompletionDate:
+              type: string
+              format: date
+            projectedCompletionAmount:
+              type: number
+              format: decimal
+            monthsToCompletion:
+              type: integer
+            confidence:
+              type: string
+              enum: [HIGH, MEDIUM, LOW]
+        scenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              monthlyContribution:
+                type: number
+                format: decimal
+              projectedCompletionDate:
+                type: string
+                format: date
+              monthsToCompletion:
+                type: integer
+        calculatedAt:
+          type: string
+          format: date-time
+
+    CreateSavingsContributionRequest:
+      type: object
+      required:
+        - amount
+        - contributionDate
+      properties:
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        contributionDate:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+
+    SavingsContribution:
+      type: object
+      properties:
+        contributionId:
+          type: string
+          format: uuid
+        goalId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        contributionDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    SavingsContributionResult:
+      type: object
+      properties:
+        contribution:
+          $ref: '#/components/schemas/SavingsContribution'
+        goal:
+          $ref: '#/components/schemas/SavingsGoal'
+
+    # Bill Schemas
+    Bill:
+      type: object
+      properties:
+        billId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+          maxLength: 100
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        currency:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        category:
+          type: string
+        isRecurring:
+          type: boolean
+        recurringPeriod:
+          type: string
+          enum: [MONTHLY, WEEKLY, YEARLY]
+          nullable: true
+        vendor:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PAID, OVERDUE]
+        paidDate:
+          type: string
+          format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateBillRequest:
+      type: object
+      required:
+        - name
+        - amount
+        - dueDate
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        currency:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        category:
+          type: string
+        isRecurring:
+          type: boolean
+          default: false
+        recurringPeriod:
+          type: string
+          enum: [MONTHLY, WEEKLY, YEARLY]
+        vendor:
+          type: string
+        notes:
+          type: string
+
+    UpdateBillRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        amount:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+        dueDate:
+          type: string
+          format: date
+        category:
+          type: string
+        isRecurring:
+          type: boolean
+        recurringPeriod:
+          type: string
+          enum: [MONTHLY, WEEKLY, YEARLY]
+        vendor:
+          type: string
+        notes:
+          type: string
+
+    MarkPaidRequest:
+      type: object
+      properties:
+        paidDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+        notes:
+          type: string
+
+    MarkPaidResponse:
+      type: object
+      properties:
+        billId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PAID]
+        paidDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    # Financial Health Schemas
+    FinancialHealth:
+      type: object
+      properties:
+        healthScoreId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        overallScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        scoreLabel:
+          type: string
+          enum: [CRITICAL, NEEDS_ATTENTION, FAIR, GOOD, EXCELLENT]
+        confidence:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        status:
+          type: string
+          enum: [FINAL, PROVISIONAL]
+        calculatedAt:
+          type: string
+          format: date-time
+        disclaimer:
+          type: string
+
+    FactorScore:
+      type: object
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        weight:
+          type: number
+          format: decimal
+        contribution:
+          type: number
+          format: decimal
+
+    FactorScores:
+      type: object
+      properties:
+        budgetAdherence:
+          $ref: '#/components/schemas/FactorScore'
+        savingsBehavior:
+          $ref: '#/components/schemas/FactorScore'
+        expenseTrend:
+          $ref: '#/components/schemas/FactorScore'
+        billDiscipline:
+          $ref: '#/components/schemas/FactorScore'
+        emergencyPreparedness:
+          $ref: '#/components/schemas/FactorScore'
+        goalProgress:
+          $ref: '#/components/schemas/FactorScore'
+
+    FinancialHealthFactors:
+      type: object
+      properties:
+        healthScoreId:
+          type: string
+          format: uuid
+        factorScores:
+          $ref: '#/components/schemas/FactorScores'
+        calculatedAt:
+          type: string
+          format: date-time
+
+    FinancialHealthHistory:
+      type: object
+      properties:
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              healthScoreId:
+                type: string
+                format: uuid
+              overallScore:
+                type: integer
+              scoreLabel:
+                type: string
+              confidence:
+                type: string
+              calculatedAt:
+                type: string
+                format: date-time
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Contributor:
+      type: object
+      properties:
+        factor:
+          type: string
+        score:
+          type: integer
+        reason:
+          type: string
+
+    ScoreChange:
+      type: object
+      properties:
+        previousScore:
+          type: integer
+        currentScore:
+          type: integer
+        change:
+          type: integer
+        direction:
+          type: string
+          enum: [IMPROVING, DECLINING, STABLE]
+        reasons:
+          type: array
+          items:
+            type: string
+
+    RecommendedAction:
+      type: object
+      properties:
+        action:
+          type: string
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+
+    FinancialHealthExplanation:
+      type: object
+      properties:
+        healthScoreId:
+          type: string
+          format: uuid
+        overallScore:
+          type: integer
+        scoreLabel:
+          type: string
+        explanation:
+          type: object
+          properties:
+            positiveContributors:
+              type: array
+              items:
+                $ref: '#/components/schemas/Contributor'
+            negativeContributors:
+              type: array
+              items:
+                $ref: '#/components/schemas/Contributor'
+            recommendedActions:
+              type: array
+              items:
+                $ref: '#/components/schemas/RecommendedAction'
+            scoreChange:
+              $ref: '#/components/schemas/ScoreChange'
+        calculatedAt:
+          type: string
+          format: date-time
+
+    # Notification Schemas
+    Notification:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [BUDGET_ALERT, BILL_REMINDER, SAVINGS_UPDATE, FINANCIAL_HEALTH_UPDATE]
+        title:
+          type: string
+        message:
+          type: string
+        data:
+          type: object
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationsResponse:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    UnreadCount:
+      type: object
+      properties:
+        unreadCount:
+          type: integer
+
+    MarkReadResponse:
+      type: object
+      properties:
+        notificationId:
+          type: string
+          format: uuid
+        isRead:
+          type: boolean
+        readAt:
+          type: string
+          format: date-time
+
+    ReadAllResponse:
+      type: object
+      properties:
+        markedCount:
+          type: integer
+        markedAt:
+          type: string
+          format: date-time
+
+    NotificationPreferences:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        preferences:
+          type: object
+          properties:
+            budgetAlerts:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                thresholdPercentage:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+            billReminders:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                reminderDays:
+                  type: array
+                  items:
+                    type: integer
+            savingsUpdates:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                frequency:
+                  type: string
+                  enum: [DAILY, WEEKLY, MONTHLY]
+            financialHealthUpdates:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                frequency:
+                  type: string
+                  enum: [DAILY, WEEKLY, MONTHLY]
+
+    UpdateNotificationPreferencesRequest:
+      type: object
+      properties:
+        budgetAlerts:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            thresholdPercentage:
+              type: integer
+              minimum: 0
+              maximum: 100
+        billReminders:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            reminderDays:
+              type: array
+              items:
+                type: integer
+        savingsUpdates:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            frequency:
+              type: string
+              enum: [DAILY, WEEKLY, MONTHLY]
+        financialHealthUpdates:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            frequency:
+              type: string
+              enum: [DAILY, WEEKLY, MONTHLY]
+
+    # AI Schemas
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        conversationId:
+          type: string
+          format: uuid
+        context:
+          type: object
+          properties:
+            includeFinancialData:
+              type: boolean
+              default: true
+            includeBudgetData:
+              type: boolean
+              default: true
+
+    AIChatResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [FACT, ANALYSIS, RECOMMENDATION, WARNING, INSUFFICIENT_DATA, REFUSAL]
+        content:
+          type: string
+        confidence:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        data:
+          type: object
+        sources:
+          type: array
+          items:
+            type: string
+
+    ChatResponse:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        userMessage:
+          type: string
+        aiResponse:
+          $ref: '#/components/schemas/AIChatResponse'
+        createdAt:
+          type: string
+          format: date-time
+
+    Conversation:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        messageCount:
+          type: integer
+        lastMessageAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    ConversationsResponse:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conversation'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ConversationMessage:
+      type: object
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [USER, AI]
+        content:
+          type: string
+        type:
+          type: string
+          enum: [FACT, ANALYSIS, RECOMMENDATION, WARNING, INSUFFICIENT_DATA, REFUSAL]
+        confidence:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    ConversationDetail:
+      type: object
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationMessage'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # Configuration Schemas
+    AdminConfiguration:
+      type: object
+      properties:
+        budgetWarningPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        budgetExceededPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        billReminderDays:
+          type: array
+          items:
+            type: integer
+        aiConfidenceThresholds:
+          type: object
+          properties:
+            high:
+              type: integer
+              minimum: 0
+              maximum: 100
+            medium:
+              type: integer
+              minimum: 0
+              maximum: 100
+        notificationThresholds:
+          type: object
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateAdminConfigurationRequest:
+      type: object
+      properties:
+        budgetWarningPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        budgetExceededPercentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        billReminderDays:
+          type: array
+          items:
+            type: integer
+        aiConfidenceThresholds:
+          type: object
+          properties:
+            high:
+              type: integer
+              minimum: 0
+              maximum: 100
+            medium:
+              type: integer
+              minimum: 0
+              maximum: 100
+
+    # AI Schemas
+    AIChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional family context
+        message:
+          type: string
+          description: User message to Neo AI
+        sessionId:
+          type: string
+          nullable: true
+          description: Optional conversation session id
+
+    AIResponse:
+      type: object
+      required:
+        - responseId
+        - type
+        - text
+        - refusal
+      properties:
+        responseId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum:
+            - FACT
+            - ANALYSIS
+            - RECOMMENDATION
+            - WARNING
+            - INSUFFICIENT_DATA
+            - REFUSAL
+        text:
+          type: string
+        toolExecutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIToolExecutionRecord'
+        citedFacts:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        refusal:
+          type: boolean
+
+    AIToolExecutionRecord:
+      type: object
+      properties:
+        toolName:
+          type: string
+        allowed:
+          type: boolean
+        executed:
+          type: boolean
+        resultSummary:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+paths:
+  # AI Paths
+  /ai/chat:
+    post:
+      summary: Chat with Neo AI
+      operationId: neoChat
+      tags:
+        - AI
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIChatRequest'
+      responses:
+        '200':
+          description: Neo AI response returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized for the requested family
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error or AI provider failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Authentication Paths
+  /auth/register:
+    post:
+      summary: Register a new user
+      operationId: register
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      summary: Login with email/password
+      operationId: login
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Account locked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/otp/request:
+    post:
+      summary: Request OTP for verification
+      operationId: requestOtp
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequestRequest'
+      responses:
+        '200':
+          description: OTP requested successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpRequestResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/otp/verify:
+    post:
+      summary: Verify OTP code
+      operationId: verifyOtp
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerifyResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refreshToken
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Logout current session
+      operationId: logout
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Logout successful
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Session not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout-all:
+    post:
+      summary: Logout from all devices and sessions
+      operationId: logoutAll
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logout from all devices and sessions successful
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/sessions:
+    get:
+      summary: Get user's active sessions
+      operationId: getSessions
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/sessions/{id}:
+    delete:
+      summary: Revoke a specific session
+      operationId: revokeSession
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Session revoked successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Session not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # User Paths
+  /users/me:
+    get:
+      summary: Get current user profile
+      operationId: getCurrentUser
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update current user profile
+      operationId: updateCurrentUser
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Phone number already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete current user account
+      operationId: deleteCurrentUser
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteUserRequest'
+      responses:
+        '204':
+          description: User account deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Cannot delete family owner with members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/preferences:
+    get:
+      summary: Get user preferences
+      operationId: getUserPreferences
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update user preferences
+      operationId: updateUserPreferences
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserPreferencesRequest'
+      responses:
+        '200':
+          description: User preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/devices:
+    get:
+      summary: Get user's registered devices
+      operationId: getUserDevices
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Devices retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Family Paths
+  /families:
+    post:
+      summary: Create a new family
+      operationId: createFamily
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFamilyRequest'
+      responses:
+        '201':
+          description: Family created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Family'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already belongs to a family
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /families/{familyId}:
+    get:
+      summary: Get family details
+      operationId: getFamily
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Family details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Family'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not a family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update family details
+      operationId: updateFamily
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFamilyRequest'
+      responses:
+        '200':
+          description: Family details updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Family'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete family
+      operationId: deleteFamily
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteFamilyRequest'
+      responses:
+        '204':
+          description: Family deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family owner or family has other members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /families/{familyId}/invitations:
+    post:
+      summary: Invite member to family
+      operationId: inviteFamilyMember
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FamilyInvitationRequest'
+      responses:
+        '201':
+          description: Invitation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyInvitation'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family owner or member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /families/{familyId}/members:
+    get:
+      summary: Get family members
+      operationId: getFamilyMembers
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Family members retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FamilyMember'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not a family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /families/{familyId}/members/{memberId}:
+    put:
+      summary: Update family member role
+      operationId: updateFamilyMember
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFamilyMemberRequest'
+      responses:
+        '200':
+          description: Family member role updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberId:
+                    type: string
+                    format: uuid
+                  userId:
+                    type: string
+                    format: uuid
+                  role:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family or member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Remove family member
+      operationId: removeFamilyMember
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Family member removed successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Family or member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Cannot remove owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /family-invitations/{token}/accept:
+    post:
+      summary: Accept family invitation
+      operationId: acceptFamilyInvitation
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation accepted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptInvitationResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invitation not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already belongs to a family
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /family-invitations/{token}/reject:
+    post:
+      summary: Reject family invitation
+      operationId: rejectFamilyInvitation
+      tags:
+        - Families
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Invitation rejected successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invitation not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Financial Overview Paths
+  /financial-overview:
+    get:
+      summary: Get complete financial overview
+      operationId: getFinancialOverview
+      tags:
+        - Financial Overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Financial overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialOverview'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-overview/summary:
+    get:
+      summary: Get financial overview summary
+      operationId: getFinancialOverviewSummary
+      tags:
+        - Financial Overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialSummary'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-overview/allocations:
+    get:
+      summary: Get allocation breakdown
+      operationId: getFinancialOverviewAllocations
+      tags:
+        - Financial Overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Allocations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allocations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Allocation'
+                  currency:
+                    type: string
+                  period:
+                    type: string
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-overview/commitments:
+    get:
+      summary: Get mandatory commitments
+      operationId: getFinancialOverviewCommitments
+      tags:
+        - Financial Overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Commitments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commitments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Commitment'
+                  totalCommitments:
+                    type: number
+                    format: decimal
+                  currency:
+                    type: string
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-overview/pending:
+    get:
+      summary: Get pending payments
+      operationId: getFinancialOverviewPending
+      tags:
+        - Financial Overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pending payments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pendingPayments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PendingPayment'
+                  totalPending:
+                    type: number
+                    format: decimal
+                  currency:
+                    type: string
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-overview/capacity:
+    get:
+      summary: Get available financial capacity
+      operationId: getFinancialOverviewCapacity
+      tags:
+        - Financial Overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Capacity retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  availableFinancialCapacity:
+                    type: number
+                    format: decimal
+                  planningIncome:
+                    type: number
+                    format: decimal
+                  committedAmount:
+                    type: number
+                    format: decimal
+                  pendingPayments:
+                    type: number
+                    format: decimal
+                  currency:
+                    type: string
+                  period:
+                    type: string
+                    pattern: ^\d{4}-\d{2}$
+                  calculatedAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Transaction Paths
+  /transactions:
+    post:
+      summary: Create a transaction
+      operationId: createTransaction
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+      responses:
+        '201':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: Get transactions with filtering
+      operationId: getTransactions
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: filter[category]
+          in: query
+          schema:
+            type: string
+        - name: filter[type]
+          in: query
+          schema:
+            type: string
+            enum: [INCOME, EXPENSE, REFUND, ADJUSTMENT, TRANSFER_RECORD]
+        - name: filter[status]
+          in: query
+          schema:
+            type: string
+            enum: [PLANNED, COMMITTED, PENDING, COMPLETED, FAILED, REVERSED]
+        - name: filter[familyMemberId]
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: filter[amountFrom]
+          in: query
+          schema:
+            type: number
+            format: decimal
+        - name: filter[amountTo]
+          in: query
+          schema:
+            type: number
+            format: decimal
+        - name: filter[dateFrom]
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: filter[dateTo]
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: createdAt:desc
+      responses:
+        '200':
+          description: Transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionsResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /transactions/{transactionId}:
+    get:
+      summary: Get transaction by ID
+      operationId: getTransaction
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transaction retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update transaction
+      operationId: updateTransaction
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTransactionRequest'
+      responses:
+        '200':
+          description: Transaction updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete transaction
+      operationId: deleteTransaction
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Transaction deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Cannot delete completed transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Budget Paths
+  /budgets:
+    post:
+      summary: Create a budget
+      operationId: createBudget
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBudgetRequest'
+      responses:
+        '201':
+          description: Budget created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Budget already exists for period
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: Get budgets with filtering
+      operationId: getBudgets
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: filter[period]
+          in: query
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}$
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: period:desc
+      responses:
+        '200':
+          description: Budgets retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  budgets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Budget'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /budgets/{budgetId}:
+    get:
+      summary: Get budget by ID
+      operationId: getBudget
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Budget retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Budget not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update budget
+      operationId: updateBudget
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBudgetRequest'
+      responses:
+        '200':
+          description: Budget updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Budget not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete budget
+      operationId: deleteBudget
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Budget deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Budget not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Cannot delete budget with committed transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /budgets/{budgetId}/utilization:
+    get:
+      summary: Get budget utilization
+      operationId: getBudgetUtilization
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Budget utilization retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetUtilization'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Budget not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /budgets/{budgetId}/forecast:
+    get:
+      summary: Get budget forecast
+      operationId: getBudgetForecast
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Budget forecast retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetForecast'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Budget not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /budgets/recommendation:
+    get:
+      summary: Get budget recommendation
+      operationId: getBudgetRecommendation
+      tags:
+        - Budgets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}$
+      responses:
+        '200':
+          description: Budget recommendation retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetRecommendation'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Allocation Paths
+  /allocation/recommendation:
+    get:
+      summary: Get allocation recommendation
+      operationId: getAllocationRecommendation
+      tags:
+        - Allocations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}$
+      responses:
+        '200':
+          description: Allocation recommendation retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllocationRecommendation'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /allocation/recommendation/{id}/approve:
+    post:
+      summary: Approve allocation recommendation
+      operationId: approveAllocationRecommendation
+      tags:
+        - Allocations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Allocation approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApproveAllocationResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Recommendation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Invalid status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /allocation/recommendation/{id}/modify:
+    post:
+      summary: Modify allocation recommendation
+      operationId: modifyAllocationRecommendation
+      tags:
+        - Allocations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyAllocationRequest'
+      responses:
+        '200':
+          description: Allocation modified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllocationRecommendation'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Recommendation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /allocation/history:
+    get:
+      summary: Get allocation history
+      operationId: getAllocationHistory
+      tags:
+        - Allocations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: period:desc
+      responses:
+        '200':
+          description: Allocation history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AllocationRecommendation'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Savings Goal Paths
+  /savings-goals:
+    post:
+      summary: Create savings goal
+      operationId: createSavingsGoal
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSavingsGoalRequest'
+      responses:
+        '201':
+          description: Savings goal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoal'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: Get savings goals
+      operationId: getSavingsGoals
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: filter[status]
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, COMPLETED, CANCELLED]
+        - name: filter[priority]
+          in: query
+          schema:
+            type: string
+            enum: [HIGH, MEDIUM, LOW]
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: targetDate:asc
+      responses:
+        '200':
+          description: Savings goals retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SavingsGoal'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /savings-goals/{goalId}:
+    get:
+      summary: Get savings goal by ID
+      operationId: getSavingsGoal
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Savings goal retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoal'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update savings goal
+      operationId: updateSavingsGoal
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSavingsGoalRequest'
+      responses:
+        '200':
+          description: Savings goal updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoal'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete savings goal
+      operationId: deleteSavingsGoal
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Savings goal deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /savings-goals/{goalId}/progress:
+    get:
+      summary: Get savings goal progress
+      operationId: getSavingsGoalProgress
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Savings goal progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoalProgress'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /savings-goals/{goalId}/forecast:
+    get:
+      summary: Get savings goal forecast
+      operationId: getSavingsGoalForecast
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Savings goal forecast retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoalForecast'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /savings-goals/{goalId}/contributions:
+    post:
+      summary: Add contribution to a savings goal
+      operationId: addSavingsGoalContribution
+      tags:
+        - Savings Goals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: goalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSavingsContributionRequest'
+      responses:
+        '201':
+          description: Contribution recorded and goal progress updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsContributionResult'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Bill Paths
+  /bills:
+    post:
+      summary: Create bill
+      operationId: createBill
+      tags:
+        - Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBillRequest'
+      responses:
+        '201':
+          description: Bill created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: Get bills with filtering
+      operationId: getBills
+      tags:
+        - Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: filter[status]
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PAID, OVERDUE]
+        - name: filter[category]
+          in: query
+          schema:
+            type: string
+        - name: filter[dueDateFrom]
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: filter[dueDateTo]
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: dueDate:asc
+      responses:
+        '200':
+          description: Bills retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bills:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bill'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bills/{billId}:
+    get:
+      summary: Get bill by ID
+      operationId: getBill
+      tags:
+        - Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Bill retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update bill
+      operationId: updateBill
+      tags:
+        - Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBillRequest'
+      responses:
+        '200':
+          description: Bill updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete bill
+      operationId: deleteBill
+      tags:
+        - Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Bill deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bills/{billId}/mark-paid:
+    post:
+      summary: Mark bill as paid
+      operationId: markBillPaid
+      tags:
+        - Bills
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkPaidRequest'
+      responses:
+        '200':
+          description: Bill marked as paid successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkPaidResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Bill not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Invalid status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Financial Health Paths
+  /financial-health:
+    get:
+      summary: Get financial health score
+      operationId: getFinancialHealth
+      tags:
+        - Financial Health
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Financial health score retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialHealth'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial health data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-health/factors:
+    get:
+      summary: Get financial health factor scores
+      operationId: getFinancialHealthFactors
+      tags:
+        - Financial Health
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Factor scores retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialHealthFactors'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial health data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-health/history:
+    get:
+      summary: Get financial health score history
+      operationId: getFinancialHealthHistory
+      tags:
+        - Financial Health
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+            minimum: 1
+            maximum: 24
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: calculatedAt:desc
+      responses:
+        '200':
+          description: Financial health history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialHealthHistory'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial-health/explanation:
+    get:
+      summary: Get financial health score explanation
+      operationId: getFinancialHealthExplanation
+      tags:
+        - Financial Health
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Family-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Financial health explanation retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialHealthExplanation'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not family member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No financial health data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Notification Paths
+  /notifications:
+    get:
+      summary: Get user notifications
+      operationId: getNotifications
+      tags:
+        - Notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: filter[read]
+          in: query
+          schema:
+            type: boolean
+        - name: filter[type]
+          in: query
+          schema:
+            type: string
+            enum: [BUDGET_ALERT, BILL_REMINDER, SAVINGS_UPDATE, FINANCIAL_HEALTH_UPDATE]
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: createdAt:desc
+      responses:
+        '200':
+          description: Notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notifications/unread-count:
+    get:
+      summary: Get unread notification count
+      operationId: getUnreadCount
+      tags:
+        - Notifications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Unread count retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCount'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notifications/{id}/read:
+    post:
+      summary: Mark notification as read
+      operationId: markNotificationRead
+      tags:
+        - Notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification marked as read successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkReadResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notifications/read-all:
+    post:
+      summary: Mark all notifications as read
+      operationId: markAllNotificationsRead
+      tags:
+        - Notifications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All notifications marked as read successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAllResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notification-preferences:
+    get:
+      summary: Get notification preferences
+      operationId: getNotificationPreferences
+      tags:
+        - Notifications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notification preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update notification preferences
+      operationId: updateNotificationPreferences
+      tags:
+        - Notifications
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferencesRequest'
+      responses:
+        '200':
+          description: Notification preferences updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # AI Paths
+  /ai/conversations:
+    get:
+      summary: Get AI conversations
+      operationId: getAIConversations
+      tags:
+        - AI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            example: updatedAt:desc
+      responses:
+        '200':
+          description: Conversations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationsResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /ai/conversations/{id}:
+    get:
+      summary: Get AI conversation by ID
+      operationId: getAIConversation
+      tags:
+        - AI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetail'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete AI conversation
+      operationId: deleteAIConversation
+      tags:
+        - AI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Conversation deleted successfully
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Configuration Paths
+  /admin/config:
+    get:
+      summary: Get admin configuration
+      operationId: getAdminConfig
+      tags:
+        - Configuration
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Admin configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminConfiguration'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized (ADMIN role required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update admin configuration
+      operationId: updateAdminConfig
+      tags:
+        - Configuration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAdminConfigurationRequest'
+      responses:
+        '200':
+          description: Admin configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminConfiguration'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not authorized (ADMIN role required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

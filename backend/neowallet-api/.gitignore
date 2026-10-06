@@ -1,0 +1,39 @@
+# Compiled class files
+*.class
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Gradle
+.gradle
+**/build/
+!src/**/build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.project
+*.classpath
+.settings/
+
+# Secrets
+*.env
+.env.*
+!env.example
+*.pem
+*.key
+secrets.yml
+secrets.yaml
+application-local.yml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

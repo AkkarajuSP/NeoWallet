@@ -1,0 +1,113 @@
+# ===== OS =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+.project
+.classpath
+.settings/
+
+# ===== Secrets / environment =====
+.env
+.env.*
+!.env.example
+!env.example
+env.local
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+key.properties
+secrets.yml
+secrets.yaml
+application-local.yml
+application-local.yaml
+sendGrid-OTP-Serv.txt
+
+# ===== Java / Maven / Gradle =====
+target/
+build/
+bin/
+out/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+dependency-reduced-pom.xml
+
+# ===== Spring Boot =====
+*.log
+logs/
+spring-boot-*.log
+
+# ===== Flutter / Dart =====
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.metadata
+**/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# ===== Android =====
+**/android/local.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ===== iOS =====
+**/ios/Pods/
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/engine/
+
+# ===== Python / AI service =====
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== Node / tooling =====
+node_modules/
+
+# ===== Diagnostics / run artifacts =====
+*.pid
+*.out
+*.err
+diag_*
+*_test.log
+*.orig
+
+# ===== Coverage / reports (generated) =====
+coverage/
+*.lcov
+htmlcov/
+.surefire-reports/
+
+# NOTE: documentation, project reports and specifications (*.md, *.yaml specs)
+# under docs/, api/, project-management/, testing/ are intentionally tracked.

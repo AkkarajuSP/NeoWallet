@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: neowallet-api
+  profiles:
+    active: ${NEOWALLET_PROFILE:dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: neowallet
+    baseline-on-migrate: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+neowallet:
+  security:
+    log-sensitive: false
+  auth:
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+    otp-ttl: 10m
+    otp-max-attempts: 5
+    otp-resend-limit: 3
+    otp-resend-window: 10m
+    max-failed-logins: 5
+    lockout-duration: 30m
+    max-devices: 10
+    max-sessions: 10
+    jwt-secret: ${NEOWALLET_JWT_SECRET}
+    issuer: neowallet-auth
+    audience: neowallet-api
+  otp:
+    provider: ${NEOWALLET_OTP_PROVIDER:stub}
+  ai:
+    provider: ${NEOWALLET_AI_PROVIDER:stub}
+    max-context-size: 10
+    max-response-tokens: 500
+    request-timeout-ms: 10000
+    rate-limit: 60
+    conversation-limit: 50
+    prompt-version: "1.0"
+    tool-version: "1.0"
